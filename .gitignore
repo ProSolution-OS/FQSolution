@@ -1,0 +1,10 @@
+node_modules/
+.vercel/
+.env
+.env.*
+*.log
+
+.vercel
+# Skill security-and-hardening: nunca commitear secretos (Stitch API key vive aquí)
+opencode.json
+.stitch-mcp/

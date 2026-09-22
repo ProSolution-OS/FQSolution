@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://fq-solution-landing.vercel.app/sitemap.xml

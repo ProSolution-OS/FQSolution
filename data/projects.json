@@ -1,0 +1,44 @@
+{
+  "_nota": "INTERNO: edita este archivo para agregar futuros proyectos. No existe UI pública para agregar proyectos. La landing solo lee este JSON en build/manual.",
+  "projects": [
+    {
+      "id": "REF-SUP-360",
+      "titulo": "Supervisor 360",
+      "subtitulo": "RestoFlow 360 Management",
+      "categoria": "operaciones",
+      "categoriaLabel": "Operaciones",
+      "estado": "En Producción",
+      "descripcion": "Plataforma de supervisión operativa multi-local: dashboard de supervisión en tiempo real, registro y resolución de incidencias críticas, checklist de apertura, cierre de caja por turno y reportes diarios.",
+      "metricaLabel": "Cobertura operativa",
+      "metricaValor": "33 pantallas activas",
+      "stack": ["TypeScript", "Node.js", "PostgreSQL", "Redis", "Docker"],
+      "origen": "Stitch project 1706846978494636963"
+    },
+    {
+      "id": "REF-GASTOS-01",
+      "titulo": "Control de Gastos Premium",
+      "subtitulo": "Fintech personal y empresarial",
+      "categoria": "fintech",
+      "categoriaLabel": "Fintech",
+      "estado": "En Producción",
+      "descripcion": "Dashboard financiero, registro de movimientos, presupuestos mensuales, metas de ahorro, gestión de deudas e inversiones con reportes y configuración avanzada.",
+      "metricaLabel": "Módulos",
+      "metricaValor": "13 pantallas",
+      "stack": ["React", "TypeScript", "PostgreSQL", "Tailwind"],
+      "origen": "Stitch project 13012628590254469807"
+    },
+    {
+      "id": "REF-ATLAS-01",
+      "titulo": "Atlas Business OS",
+      "subtitulo": "ERP / Inventory Center",
+      "categoria": "erp",
+      "categoriaLabel": "ERP & Datos",
+      "estado": "En Producción",
+      "descripcion": "Sistema operativo empresarial: catálogo maestro, inventario con gemelo digital, dashboard ejecutivo, gestión multi-empresa y asistente de creación de productos.",
+      "metricaLabel": "Módulos",
+      "metricaValor": "12 pantallas",
+      "stack": ["Next.js", "GraphQL", "PostgreSQL", "Kubernetes"],
+      "origen": "Stitch project 16974394116954460322"
+    }
+  ]
+}

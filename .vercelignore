@@ -1,0 +1,6 @@
+opencode.json
+.stitch-mcp/
+.env
+.env.*
+data/
+.agents/

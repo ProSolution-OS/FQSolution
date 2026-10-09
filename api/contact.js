@@ -7,6 +7,7 @@ const MAX_REQ = 6;
 // (cada instancia lleva el suyo). Suficiente contra spam casual; para límite estricto
 // usar store compartido (Upstash Redis) y contar allí.
 const hits = new Map(); // ip -> {count, start}
+const PRESUPUESTO = { t1: '$1,000 - $3,000 USD', t2: '$5,000 - $10,000 USD', retainer: 'Enterprise Retainer / Continuo' };
 
 function ipOf(req) {
   const fwd = req.headers['x-forwarded-for'];
@@ -40,7 +41,7 @@ module.exports = async (req, res) => {
   try {
     raw = await new Promise((resolve, reject) => {
       let size = 0;
-      req.on('data', (c) => { size += c.length; if (size > 12 * 1024) reject(new Error('too-large')); });
+      req.on('data', (c) => { size += c.length; if (size > 12 * 1024) { reject(new Error('too-large')); req.destroy(); } });
       req.on('end', () => resolve(raw));
       req.on('error', reject);
       req.on('data', (c) => { raw += c; });
@@ -66,12 +67,12 @@ module.exports = async (req, res) => {
 
   // Honeypot + tiempo mínimo
   if (body.empresa_web) return json(res, 200, { message: 'Mensaje recibido. Te contactaremos en menos de 24h.' });
-  if (Number(body._t) < 2500) return json(res, 400, { message: 'Envío demasiado rápido. Completa el formulario con calma.' });
+  if (!(Number(body._t) >= 2500)) return json(res, 400, { message: 'Envío demasiado rápido. Completa el formulario con calma.' });
 
   const nombre = clean(body.nombre, 120);
   const email = clean(body.email, 160).toLowerCase();
   const tipo = clean(body.tipo, 30);
-  const presupuesto = clean(body.presupuesto, 20);
+  const presupuesto = PRESUPUESTO[clean(body.presupuesto, 20)] || '';
   const mensaje = clean(body.mensaje, 4000);
 
   if (nombre.length < 3) return json(res, 400, { message: 'Nombre inválido.' });

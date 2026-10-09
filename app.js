@@ -14,20 +14,6 @@ if (menuBtn && nav) {
   });
 }
 
-// Filtros de proyectos (solo exhibición, sin alta pública)
-$$('.filter-btn').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    $$('.filter-btn').forEach((b) => { b.classList.remove('is-active'); b.setAttribute('aria-pressed', 'false'); });
-    btn.classList.add('is-active');
-    btn.setAttribute('aria-pressed', 'true');
-    const f = btn.dataset.filter;
-    $$('#projectsGrid .card').forEach((card) => {
-      const show = f === 'all' || card.dataset.category === f;
-      card.style.display = show ? '' : 'none';
-    });
-  });
-});
-
 // Contador
 const msg = $('#mensaje');
 const count = $('#charCount');
@@ -95,7 +81,7 @@ if (form) {
       setMsg('Error de red. Intenta de nuevo.', 'err');
     } finally {
       submitBtn.disabled = false;
-      submitBtn.textContent = 'Enviar Mensaje Ejecutivo';
+      submitBtn.textContent = 'Enviar mensaje';
     }
   });
 }

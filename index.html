@@ -97,15 +97,16 @@
       <div class="hero-grid">
         <div>
           <p class="pill"><span class="dot"></span> Arquitectura &amp; Cómputo Distribuido · FQ Solution</p>
-          <h1>Arquitectura Digital y Desarrollo de <span class="grad">Alto Rendimiento</span></h1>
-          <p class="lead">Diseñamos plataformas de misión crítica y solidez garantizada.</p>
+          <h1>Supervisa todos tus locales en <span class="grad">tiempo real</span></h1>
+          <p class="lead">Supervisor 360: incidencias, checklist de apertura, cierre de caja y reportes diarios en una sola plataforma. Además, desarrollo de software a medida.</p>
           <div class="cta-row">
-            <a class="btn btn-ghost" href="#contacto">Contactar Ahora</a>
+            <a class="btn btn-primary" href="#contacto">Solicitar demo</a>
+            <a class="btn btn-ghost" href="#proyectos">Ver Supervisor 360</a>
           </div>
         </div>
         <div class="hero-media">
           <img src="/assets/hero.jpg" alt="Infraestructura digital de alto rendimiento FQ Solution" width="800" height="600" fetchpriority="high" decoding="async" />
-          <div class="hero-badge"><strong>Cluster Isomórfico Activo</strong><span>SYNCHRONIZED</span></div>
+          <div class="hero-badge"><strong>Supervisor 360</strong><span>En producción</span></div>
         </div>
       </div>
     </section>
@@ -126,14 +127,7 @@
     <section class="wrap section" id="proyectos" aria-label="Proyectos de software">
       <p class="eyebrow">Portafolio de Ingeniería · FQ Solution</p>
       <h2>Desarrollo de software a medida y Supervisor 360 en producción</h2>
-      <p class="muted">Sistemas en producción a gran escala con arquitecturas tolerantes a fallos. La gestión de proyectos es interna (<code>data/projects.json</code>); esta página es solo exhibición pública.</p>
-
-      <div class="filters" role="group" aria-label="Filtrar proyectos">
-        <button class="filter-btn is-active" data-filter="all" aria-pressed="true">Todos</button>
-        <button class="filter-btn" data-filter="operaciones" aria-pressed="false">Operaciones</button>
-        <button class="filter-btn" data-filter="fintech" aria-pressed="false">Fintech</button>
-        <button class="filter-btn" data-filter="erp" aria-pressed="false">ERP &amp; Datos</button>
-      </div>
+      <p class="muted">Plataforma en producción para supervisar la operación diaria de restaurantes y locales con varias sucursales.</p>
 
       <div class="grid" id="projectsGrid">
         <article class="card" data-category="operaciones">
@@ -152,7 +146,7 @@
 
     <!-- FAQ SEO -->
     <section class="wrap section" id="faq" aria-label="Preguntas frecuentes">
-      <p class="eyebrow">SEO · Preguntas frecuentes</p>
+      <p class="eyebrow">Preguntas frecuentes</p>
       <h2>Preguntas frecuentes sobre FQ Solution</h2>
       <div class="faq">
         <details open>
@@ -178,7 +172,7 @@
     <section class="contact" id="contacto" aria-label="Contacto directo FQ Solution">
       <div class="wrap contact-grid">
         <div class="form-card">
-          <p class="eyebrow">Protocolo de Enlace Directo</p>
+          <p class="eyebrow">Contacto</p>
           <h2>Contacto directo: cotiza tu software en 24 horas</h2>
           <p class="muted">Atención directa por ingeniería de FQ Solution. Respuesta en menos de 24 horas hábiles.</p>
           <form id="contactForm" action="/api/contact" method="POST" novalidate>
@@ -202,6 +196,7 @@
               <div>
                 <label for="presupuesto">Rango de Presupuesto</label>
                 <select id="presupuesto" name="presupuesto">
+                  <option value="">Selecciona (opcional)</option>
                   <option value="t1">$1,000 - $3,000 USD</option>
                   <option value="t2">$5,000 - $10,000 USD</option>
                   <option value="retainer">Enterprise Retainer / Continuo</option>
@@ -218,7 +213,7 @@
               <label for="empresa_web">No completar</label>
               <input id="empresa_web" name="empresa_web" type="text" tabindex="-1" autocomplete="off" />
             </div>
-            <button class="btn btn-primary btn-block" type="submit" id="submitBtn">Enviar Mensaje Ejecutivo</button>
+            <button class="btn btn-primary btn-block" type="submit" id="submitBtn">Enviar mensaje</button>
             <p class="form-msg" id="formMsg" role="status" aria-live="polite"></p>
           </form>
         </div>

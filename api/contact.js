@@ -105,7 +105,7 @@ module.exports = async (req, res) => {
   if (mensaje.length < 20) return json(res, 400, { message: 'Mensaje demasiado corto (mín. 20 caracteres).' });
 
   // Configura en Vercel: RESEND_API_KEY (requerido), CONTACT_TO y CONTACT_FROM (opcionales).
-  const TO = (process.env.CONTACT_TO || 'qfreddy03@gmail.com').trim();
+  const TO = (process.env.CONTACT_TO || 'fqsolution@fqsolution.site').trim();
   const FROM = (process.env.CONTACT_FROM || 'FQ Solution <onboarding@resend.dev>').trim();
   if (!process.env.RESEND_API_KEY) {
     console.error('[contact] missing RESEND_API_KEY');

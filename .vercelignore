@@ -4,3 +4,4 @@ opencode.json
 .env.*
 data/
 .agents/
+skills-lock.json

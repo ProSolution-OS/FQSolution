@@ -2,7 +2,7 @@
 // Seguridad: POST+JSON, comprobación de Origin, límite de tamaño, honeypot, allowlists,
 // validación, sanitización y rate-limit (best-effort en memoria; para límite estricto usar Upstash Redis).
 const ALLOWED_TIPOS = new Set(['desarrollo', 'migracion', 'arquitectura', 'consultoria', 'supervisor360']);
-const ALLOWED_PRESUPUESTO = new Set(['t1', 't2', 'retainer']);
+const PRESUPUESTO = { t1: '$1,000 - $3,000 USD', t2: '$5,000 - $10,000 USD', retainer: 'Enterprise Retainer / Continuo' };
 const ALLOWED_HOSTS = new Set(['fq-solution-landing.vercel.app', 'localhost', '127.0.0.1']);
 const WINDOW_MS = 10 * 60 * 1000;
 const MAX_REQ = 6;
@@ -101,7 +101,7 @@ module.exports = async (req, res) => {
   if (nombre.length < 3) return json(res, 400, { message: 'Nombre inválido.' });
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return json(res, 400, { message: 'Correo inválido.' });
   if (!ALLOWED_TIPOS.has(tipo)) return json(res, 400, { message: 'Tipo de proyecto inválido.' });
-  if (presupuesto && !ALLOWED_PRESUPUESTO.has(presupuesto)) return json(res, 400, { message: 'Presupuesto inválido.' });
+  if (presupuesto && !(presupuesto in PRESUPUESTO)) return json(res, 400, { message: 'Presupuesto inválido.' });
   if (mensaje.length < 20) return json(res, 400, { message: 'Mensaje demasiado corto (mín. 20 caracteres).' });
 
   // Configura en Vercel: RESEND_API_KEY (requerido), CONTACT_TO y CONTACT_FROM (opcionales).
@@ -112,7 +112,7 @@ module.exports = async (req, res) => {
     return json(res, 503, { message: 'El servicio de correo no está disponible. Escríbenos a qfreddy03@gmail.com.' });
   }
   const subject = `[FQ Solution] ${tipo} — ${nombre}`.slice(0, 120);
-  const text = `Nombre: ${nombre}\nEmail: ${email}\nTipo: ${tipo}\nPresupuesto: ${presupuesto || '-'}\nIP: ${ip}\n\n${mensaje}`.slice(0, 5000);
+  const text = `Nombre: ${nombre}\nEmail: ${email}\nTipo: ${tipo}\nPresupuesto: ${PRESUPUESTO[presupuesto] || '-'}\nIP: ${ip}\n\n${mensaje}`.slice(0, 5000);
 
   try {
     const ctrl = new AbortController();

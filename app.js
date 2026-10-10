@@ -1,4 +1,5 @@
-// FQ Solution landing — JS mínimo, sin innerHTML con datos de usuario
+// FQ Solution landing — JS mínimo, compatible con CSP estricta (sin inline, sin innerHTML)
+document.documentElement.classList.add('js');
 const $ = (s, c = document) => c.querySelector(s);
 const $$ = (s, c = document) => Array.from(c.querySelectorAll(s));
 
@@ -8,32 +9,32 @@ const t0 = Date.now();
 const menuBtn = $('#menuBtn');
 const nav = $('#nav');
 if (menuBtn && nav) {
-  menuBtn.addEventListener('click', () => {
-    const open = nav.classList.toggle('open');
+  const setOpen = (open) => {
+    nav.classList.toggle('open', open);
     menuBtn.setAttribute('aria-expanded', String(open));
-  });
+  };
+  menuBtn.addEventListener('click', () => setOpen(!nav.classList.contains('open')));
+  nav.addEventListener('click', (e) => { if (e.target.closest('a')) setOpen(false); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setOpen(false); });
 }
 
-// Filtros de proyectos (solo exhibición, sin alta pública)
-$$('.filter-btn').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    $$('.filter-btn').forEach((b) => { b.classList.remove('is-active'); b.setAttribute('aria-pressed', 'false'); });
-    btn.classList.add('is-active');
-    btn.setAttribute('aria-pressed', 'true');
-    const f = btn.dataset.filter;
-    $$('#projectsGrid .card').forEach((card) => {
-      const show = f === 'all' || card.dataset.category === f;
-      card.style.display = show ? '' : 'none';
-    });
-  });
-});
+// Animación de entrada al hacer scroll
+const items = $$('.reveal');
+if ('IntersectionObserver' in window) {
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((en) => { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } });
+  }, { threshold: 0.12 });
+  items.forEach((el) => io.observe(el));
+} else {
+  items.forEach((el) => el.classList.add('in'));
+}
 
-// Contador
+// Contador de caracteres
 const msg = $('#mensaje');
 const count = $('#charCount');
 if (msg && count) msg.addEventListener('input', () => { count.textContent = String(msg.value.length); });
 
-// Envío seguro al endpoint /api/contact
+// Envío al endpoint /api/contact (el servidor revalida todo)
 const form = $('#contactForm');
 const formMsg = $('#formMsg');
 const submitBtn = $('#submitBtn');
@@ -50,12 +51,9 @@ if (form) {
     e.preventDefault();
     setMsg('', '');
 
-    // Rate-limit cliente: 1 envío cada 8s
     const now = Date.now();
     if (now - lastSubmit < 8000) { setMsg('Espera unos segundos antes de reintentar.', 'err'); return; }
-
-    // Tiempo mínimo de permanencia (anti-bots): 3s
-    if (Date.now() - t0 < 3000) { setMsg('Completa el formulario con calma y reintenta.', 'err'); return; }
+    if (now - t0 < 3000) { setMsg('Completa el formulario con calma y reintenta.', 'err'); return; }
 
     const data = {
       nombre: $('#nombre').value.trim(),
@@ -64,13 +62,12 @@ if (form) {
       presupuesto: $('#presupuesto').value,
       mensaje: $('#mensaje').value.trim(),
       empresa_web: $('#empresa_web').value, // honeypot
-      _t: Date.now() - t0
+      _t: now - t0
     };
 
-    // Validación cliente (el servidor revalida)
     if (data.nombre.length < 3 || data.nombre.length > 120) { setMsg('Nombre inválido (3-120 caracteres).', 'err'); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(data.email) || data.email.length > 160) { setMsg('Correo inválido.', 'err'); return; }
-    if (data.mensaje.length < 20 || data.mensaje.length > 4000) { setMsg('Mensaje debe tener 20-4000 caracteres.', 'err'); return; }
+    if (data.mensaje.length < 20 || data.mensaje.length > 4000) { setMsg('El mensaje debe tener 20-4000 caracteres.', 'err'); return; }
     if (data.empresa_web) { setMsg('Enviado.', 'ok'); return; } // bot: fingir éxito
 
     submitBtn.disabled = true;
@@ -95,7 +92,7 @@ if (form) {
       setMsg('Error de red. Intenta de nuevo.', 'err');
     } finally {
       submitBtn.disabled = false;
-      submitBtn.textContent = 'Enviar Mensaje Ejecutivo';
+      submitBtn.textContent = 'Enviar mensaje';
     }
   });
 }

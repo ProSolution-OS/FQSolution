@@ -1,20 +1,23 @@
 // /api/contact — endpoint serverless para Vercel (Node)
-// Seguridad: POST+JSON, límite de tamaño, honeypot, validación, sanitización, rate-limit, sin XSS/SQLi (no hay DB).
-const ALLOWED_TIPOS = new Set(['desarrollo', 'migracion', 'arquitectura', 'consultoria']);
+// Seguridad: POST+JSON, comprobación de Origin, límite de tamaño, honeypot, allowlists,
+// validación, sanitización y rate-limit (best-effort en memoria; para límite estricto usar Upstash Redis).
+const ALLOWED_TIPOS = new Set(['desarrollo', 'migracion', 'arquitectura', 'consultoria', 'supervisor360']);
+const ALLOWED_PRESUPUESTO = new Set(['t1', 't2', 'retainer']);
+const ALLOWED_HOSTS = new Set(['fq-solution-landing.vercel.app', 'localhost', '127.0.0.1']);
 const WINDOW_MS = 10 * 60 * 1000;
 const MAX_REQ = 6;
-// Skill security-and-hardening: en serverless el contador en memoria es best-effort
-// (cada instancia lleva el suyo). Suficiente contra spam casual; para límite estricto
-// usar store compartido (Upstash Redis) y contar allí.
+const MAX_BODY = 12 * 1024;
 const hits = new Map(); // ip -> {count, start}
 
+// En Vercel, x-real-ip / x-vercel-forwarded-for los fija la plataforma; x-forwarded-for
+// puede traer valores inyectados por el cliente, así que NO se usa como primera opción.
 function ipOf(req) {
-  const fwd = req.headers['x-forwarded-for'];
-  if (typeof fwd === 'string') return fwd.split(',')[0].trim().slice(0, 64);
-  return (req.socket?.remoteAddress || 'unknown').slice(0, 64);
+  const h = req.headers;
+  const v = h['x-vercel-forwarded-for'] || h['x-real-ip'] || h['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+  return String(v).split(',')[0].trim().slice(0, 64);
 }
 function clean(s, max) {
-  return String(s ?? '').replace(/[\u0000-\u001F\u007F]/g, '').replace(/<[^>]*>/g, '').trim().slice(0, max);
+  return String(s ?? '').replace(/[\u0000-\u001F\u007F]/g, ' ').replace(/<[^>]*>/g, '').trim().slice(0, max);
 }
 function json(res, code, obj) {
   res.statusCode = code;
@@ -22,9 +25,34 @@ function json(res, code, obj) {
   res.setHeader('Cache-Control', 'no-store');
   res.end(JSON.stringify(obj));
 }
+function originOk(req) {
+  const o = req.headers.origin;
+  if (!o) return false; // fetch POST desde el navegador siempre envía Origin
+  try {
+    const host = new URL(o).hostname;
+    // Producción, local y previews de Vercel de este proyecto (fq-solution-landing-*.vercel.app)
+    return ALLOWED_HOSTS.has(host) || /^fq-solution-landing(-[a-z0-9-]+)?\.vercel\.app$/.test(host);
+  } catch { return false; }
+}
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    let size = 0;
+    const chunks = [];
+    req.on('data', (c) => {
+      size += c.length;
+      if (size > MAX_BODY) { reject(new Error('too-large')); req.destroy(); return; }
+      chunks.push(c);
+    });
+    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+    req.on('error', reject);
+  });
+}
+function prune(now) {
+  if (hits.size < 500) return;
+  for (const [k, v] of hits) if (now - v.start > WINDOW_MS) hits.delete(k);
+}
 
 module.exports = async (req, res) => {
-  // Cabeceras base
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
 
@@ -32,29 +60,14 @@ module.exports = async (req, res) => {
     res.setHeader('Allow', 'POST');
     return json(res, 405, { message: 'Método no permitido.' });
   }
+  if (!originOk(req)) return json(res, 403, { message: 'Origen no permitido.' });
   const ct = req.headers['content-type'] || '';
   if (!ct.includes('application/json')) return json(res, 415, { message: 'Content-Type debe ser application/json.' });
 
-  // Límite de tamaño ~12KB
-  let raw = '';
-  try {
-    raw = await new Promise((resolve, reject) => {
-      let size = 0;
-      req.on('data', (c) => { size += c.length; if (size > 12 * 1024) reject(new Error('too-large')); });
-      req.on('end', () => resolve(raw));
-      req.on('error', reject);
-      req.on('data', (c) => { raw += c; });
-    });
-  } catch {
-    return json(res, 413, { message: 'Payload demasiado grande.' });
-  }
-
-  let body;
-  try { body = JSON.parse(raw || '{}'); }
-  catch { return json(res, 400, { message: 'JSON inválido.' }); }
-
+  // Rate-limit ANTES de procesar el cuerpo
   const ip = ipOf(req);
   const now = Date.now();
+  prune(now);
   const slot = hits.get(ip) || { count: 0, start: now };
   if (now - slot.start > WINDOW_MS) { slot.count = 0; slot.start = now; }
   slot.count += 1;
@@ -64,49 +77,62 @@ module.exports = async (req, res) => {
     return json(res, 429, { message: 'Demasiados envíos. Intenta en 10 minutos.' });
   }
 
-  // Honeypot + tiempo mínimo
+  let body;
+  try {
+    const raw = await readBody(req);
+    body = JSON.parse(raw || '{}');
+    if (body === null || typeof body !== 'object' || Array.isArray(body)) throw new Error('shape');
+  } catch (e) {
+    if (e.message === 'too-large') return json(res, 413, { message: 'Payload demasiado grande.' });
+    return json(res, 400, { message: 'JSON inválido.' });
+  }
+
+  // Honeypot + tiempo mínimo (si _t falta o no es número, se rechaza: antes NaN lo saltaba)
   if (body.empresa_web) return json(res, 200, { message: 'Mensaje recibido. Te contactaremos en menos de 24h.' });
-  if (Number(body._t) < 2500) return json(res, 400, { message: 'Envío demasiado rápido. Completa el formulario con calma.' });
+  const elapsed = Number(body._t);
+  if (!Number.isFinite(elapsed) || elapsed < 2500) return json(res, 400, { message: 'Envío demasiado rápido. Completa el formulario con calma.' });
 
   const nombre = clean(body.nombre, 120);
   const email = clean(body.email, 160).toLowerCase();
   const tipo = clean(body.tipo, 30);
   const presupuesto = clean(body.presupuesto, 20);
-  const mensaje = clean(body.mensaje, 4000);
+  const mensaje = String(body.mensaje ?? '').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').replace(/<[^>]*>/g, '').trim().slice(0, 4000);
 
   if (nombre.length < 3) return json(res, 400, { message: 'Nombre inválido.' });
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return json(res, 400, { message: 'Correo inválido.' });
   if (!ALLOWED_TIPOS.has(tipo)) return json(res, 400, { message: 'Tipo de proyecto inválido.' });
+  if (presupuesto && !ALLOWED_PRESUPUESTO.has(presupuesto)) return json(res, 400, { message: 'Presupuesto inválido.' });
   if (mensaje.length < 20) return json(res, 400, { message: 'Mensaje demasiado corto (mín. 20 caracteres).' });
 
-  // Envío a qfreddy03@gmail.com vía Resend (https://resend.com, plan gratis).
   // Configura en Vercel: RESEND_API_KEY (requerido), CONTACT_TO y CONTACT_FROM (opcionales).
   const TO = (process.env.CONTACT_TO || 'qfreddy03@gmail.com').trim();
   const FROM = (process.env.CONTACT_FROM || 'FQ Solution <onboarding@resend.dev>').trim();
   if (!process.env.RESEND_API_KEY) {
     console.error('[contact] missing RESEND_API_KEY');
-    return json(res, 503, { message: 'Correo no configurado en el servidor. Falta RESEND_API_KEY.' });
+    return json(res, 503, { message: 'El servicio de correo no está disponible. Escríbenos a qfreddy03@gmail.com.' });
   }
   const subject = `[FQ Solution] ${tipo} — ${nombre}`.slice(0, 120);
   const text = `Nombre: ${nombre}\nEmail: ${email}\nTipo: ${tipo}\nPresupuesto: ${presupuesto || '-'}\nIP: ${ip}\n\n${mensaje}`.slice(0, 5000);
 
   try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8000);
     const r = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: FROM, to: [TO], subject, text, reply_to: email })
+      body: JSON.stringify({ from: FROM, to: [TO], subject, text, reply_to: email }),
+      signal: ctrl.signal
     });
+    clearTimeout(timer);
     if (!r.ok) {
-      const t = await r.text().catch(() => '');
-      console.error(`[contact] resend fail ${r.status} ${t.slice(0, 300)}`);
+      console.error(`[contact] resend fail ${r.status}`); // no se registra el cuerpo (puede contener datos del usuario)
       return json(res, 502, { message: 'No se pudo enviar el correo. Intenta de nuevo.' });
     }
   } catch (e) {
-    console.error('[contact] send error', e?.message || e);
+    console.error('[contact] send error', e?.name || 'error');
     return json(res, 502, { message: 'No se pudo enviar el correo. Intenta de nuevo.' });
   }
 
-  console.log(`[contact] sent to=${TO} tipo=${tipo} len=${mensaje.length}`);
-
+  console.log(`[contact] sent tipo=${tipo} len=${mensaje.length}`);
   return json(res, 200, { message: 'Mensaje recibido. Te contactaremos en menos de 24h.' });
 };

@@ -103,6 +103,9 @@ module.exports = async (req, res) => {
   if (!ALLOWED_TIPOS.has(tipo)) return json(res, 400, { message: 'Tipo de proyecto inválido.' });
   if (presupuesto && !Object.hasOwn(PRESUPUESTO, presupuesto)) return json(res, 400, { message: 'Presupuesto inválido.' });
   if (mensaje.length < 20) return json(res, 400, { message: 'Mensaje demasiado corto (mín. 20 caracteres).' });
+  // Consentimiento explícito (casilla no premarcada): sin él no se trata ningún dato.
+  if (body.consentimiento !== true) return json(res, 400, { message: 'Debes aceptar la Política de privacidad para enviar el mensaje.' });
+  const politica = /^\d{4}-\d{2}-\d{2}$/.test(String(body.politica ?? '')) ? String(body.politica) : 'desconocida';
 
   // Configura en Vercel: RESEND_API_KEY (requerido), CONTACT_TO y CONTACT_FROM (opcionales).
   const TO = (process.env.CONTACT_TO || 'fqsolution@fqsolution.site').trim();
@@ -112,7 +115,8 @@ module.exports = async (req, res) => {
     return json(res, 503, { message: 'El servicio de correo no está disponible. Escríbenos a fqsolution@fqsolution.site.' });
   }
   const subject = `[FQ Solution] ${tipo} — ${nombre}`.slice(0, 120);
-  const text = `Nombre: ${nombre}\nEmail: ${email}\nTipo: ${tipo}\nPresupuesto: ${PRESUPUESTO[presupuesto] || '-'}\nIP: ${ip}\n\n${mensaje}`.slice(0, 5000);
+  // Minimización: la IP solo se usa en memoria para limitar abusos; no se incluye en el correo ni se guarda.
+  const text = `Nombre: ${nombre}\nEmail: ${email}\nTipo: ${tipo}\nPresupuesto: ${PRESUPUESTO[presupuesto] || '-'}\nConsentimiento: aceptado (política ${politica}, ${new Date().toISOString()})\n\n${mensaje}`.slice(0, 5000);
 
   try {
     const ctrl = new AbortController();

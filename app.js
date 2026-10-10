@@ -4,6 +4,7 @@ const $ = (s, c = document) => c.querySelector(s);
 const $$ = (s, c = document) => Array.from(c.querySelectorAll(s));
 
 const t0 = Date.now();
+const PRIVACY_VERSION = '2026-10-10'; // debe coincidir con la fecha de la Política de privacidad
 
 // Menú móvil
 const menuBtn = $('#menuBtn');
@@ -44,6 +45,14 @@ function setMsg(text, kind) {
   if (!formMsg) return;
   formMsg.textContent = text; // textContent evita XSS
   formMsg.className = 'form-msg ' + (kind || '');
+  formMsg.setAttribute('role', kind === 'err' ? 'alert' : 'status'); // los errores se anuncian de inmediato
+}
+
+// Marca el campo con error, lo anuncia y le da el foco (formularios operables por teclado y lector de pantalla)
+function fail(field, text) {
+  $$('[aria-invalid="true"]', form).forEach((el) => el.removeAttribute('aria-invalid'));
+  if (field) { field.setAttribute('aria-invalid', 'true'); field.focus(); }
+  setMsg(text, 'err');
 }
 
 if (form) {
@@ -62,12 +71,16 @@ if (form) {
       presupuesto: $('#presupuesto').value,
       mensaje: $('#mensaje').value.trim(),
       empresa_web: $('#empresa_web').value, // honeypot
+      consentimiento: $('#consentimiento').checked,
+      politica: PRIVACY_VERSION,
       _t: now - t0
     };
 
-    if (data.nombre.length < 3 || data.nombre.length > 120) { setMsg('Nombre inválido (3-120 caracteres).', 'err'); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(data.email) || data.email.length > 160) { setMsg('Correo inválido.', 'err'); return; }
-    if (data.mensaje.length < 20 || data.mensaje.length > 4000) { setMsg('El mensaje debe tener 20-4000 caracteres.', 'err'); return; }
+    if (data.nombre.length < 3 || data.nombre.length > 120) { fail($('#nombre'), 'Nombre inválido (3-120 caracteres).'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(data.email) || data.email.length > 160) { fail($('#email'), 'Correo inválido.'); return; }
+    if (data.mensaje.length < 20 || data.mensaje.length > 4000) { fail($('#mensaje'), 'El mensaje debe tener 20-4000 caracteres.'); return; }
+    if (!$('#consentimiento').checked) { fail($('#consentimiento'), 'Para enviar el mensaje debes aceptar la Política de privacidad.'); return; }
+    $$('[aria-invalid="true"]', form).forEach((el) => el.removeAttribute('aria-invalid'));
     if (data.empresa_web) { setMsg('Enviado.', 'ok'); return; } // bot: fingir éxito
 
     submitBtn.disabled = true;

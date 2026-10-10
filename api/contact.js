@@ -102,6 +102,7 @@ module.exports = async (req, res) => {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return json(res, 400, { message: 'Correo inválido.' });
   if (!ALLOWED_TIPOS.has(tipo)) return json(res, 400, { message: 'Tipo de proyecto inválido.' });
   if (presupuesto && !Object.hasOwn(PRESUPUESTO, presupuesto)) return json(res, 400, { message: 'Presupuesto inválido.' });
+  if (body.consentimiento !== true) return json(res, 400, { message: 'Debes aceptar la Política de Privacidad.' });
   if (mensaje.length < 20) return json(res, 400, { message: 'Mensaje demasiado corto (mín. 20 caracteres).' });
 
   // Configura en Vercel: RESEND_API_KEY (requerido), CONTACT_TO y CONTACT_FROM (opcionales).

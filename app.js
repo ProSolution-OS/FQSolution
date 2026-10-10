@@ -61,6 +61,7 @@ if (form) {
       tipo: $('#tipo').value,
       presupuesto: $('#presupuesto').value,
       mensaje: $('#mensaje').value.trim(),
+      consentimiento: $('#consentimiento').checked,
       empresa_web: $('#empresa_web').value, // honeypot
       _t: now - t0
     };
@@ -68,6 +69,7 @@ if (form) {
     if (data.nombre.length < 3 || data.nombre.length > 120) { setMsg('Nombre inválido (3-120 caracteres).', 'err'); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(data.email) || data.email.length > 160) { setMsg('Correo inválido.', 'err'); return; }
     if (data.mensaje.length < 20 || data.mensaje.length > 4000) { setMsg('El mensaje debe tener 20-4000 caracteres.', 'err'); return; }
+    if (!data.consentimiento) { setMsg('Debes aceptar la Política de Privacidad para enviar.', 'err'); return; }
     if (data.empresa_web) { setMsg('Enviado.', 'ok'); return; } // bot: fingir éxito
 
     submitBtn.disabled = true;

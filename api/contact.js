@@ -109,7 +109,7 @@ module.exports = async (req, res) => {
   const FROM = (process.env.CONTACT_FROM || 'FQ Solution <onboarding@resend.dev>').trim();
   if (!process.env.RESEND_API_KEY) {
     console.error('[contact] missing RESEND_API_KEY');
-    return json(res, 503, { message: 'El servicio de correo no está disponible. Escríbenos a qfreddy03@gmail.com.' });
+    return json(res, 503, { message: 'El servicio de correo no está disponible. Escríbenos a fqsolution@fqsolution.site.' });
   }
   const subject = `[FQ Solution] ${tipo} — ${nombre}`.slice(0, 120);
   const text = `Nombre: ${nombre}\nEmail: ${email}\nTipo: ${tipo}\nPresupuesto: ${PRESUPUESTO[presupuesto] || '-'}\nIP: ${ip}\n\n${mensaje}`.slice(0, 5000);

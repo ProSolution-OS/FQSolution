@@ -3,7 +3,7 @@
 // validación, sanitización y rate-limit (best-effort en memoria; para límite estricto usar Upstash Redis).
 const ALLOWED_TIPOS = new Set(['desarrollo', 'migracion', 'arquitectura', 'consultoria', 'supervisor360']);
 const PRESUPUESTO = { t1: '$1,000 - $3,000 USD', t2: '$5,000 - $10,000 USD', retainer: 'Enterprise Retainer / Continuo' };
-const ALLOWED_HOSTS = new Set(['fq-solution-landing.vercel.app', 'localhost', '127.0.0.1']);
+const ALLOWED_HOSTS = new Set(['www.fqsolution.site', 'fqsolution.site', 'fq-solution-landing.vercel.app', 'localhost', '127.0.0.1']);
 const WINDOW_MS = 10 * 60 * 1000;
 const MAX_REQ = 6;
 const MAX_BODY = 12 * 1024;

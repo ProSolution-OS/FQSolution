@@ -1,8 +1,8 @@
 // /api/contact — endpoint serverless para Vercel (Node)
 // Seguridad: POST+JSON, comprobación de Origin, límite de tamaño, honeypot, allowlists,
 // validación, sanitización y rate-limit (best-effort en memoria; para límite estricto usar Upstash Redis).
-const ALLOWED_TIPOS = new Set(['desarrollo', 'migracion', 'arquitectura', 'consultoria', 'supervisor360']);
-const PRESUPUESTO = { t1: '$1,000 - $3,000 USD', t2: '$5,000 - $10,000 USD', retainer: 'Enterprise Retainer / Continuo' };
+// Formulario de demo de Supervisor 360: nombre, WhatsApp y cantidad de locales.
+const LOCALES = { '1': '1 local', '2-3': '2 a 3 locales', '4-10': '4 a 10 locales', 'mas-de-10': 'Más de 10 locales' };
 const ALLOWED_HOSTS = new Set(['www.fqsolution.site', 'fqsolution.site', 'fq-solution-landing.vercel.app', 'localhost', '127.0.0.1']);
 const WINDOW_MS = 10 * 60 * 1000;
 const MAX_REQ = 6;
@@ -18,6 +18,15 @@ function ipOf(req) {
 }
 function clean(s, max) {
   return String(s ?? '').replace(/[\u0000-\u001F\u007F]/g, ' ').replace(/<[^>]*>/g, '').trim().slice(0, max);
+}
+// WhatsApp: acepta +593 96 324 7485, 0963247485, (09) 6324-7485… y devuelve solo dígitos con prefijo de país.
+// Un número local ecuatoriano (0 + 9 dígitos) se normaliza con 593. Devuelve '' si no es plausible (8 a 15 dígitos).
+function normalizarWhatsapp(v) {
+  let d = String(v ?? '').replace(/\D/g, '');
+  if (d.startsWith('00')) d = d.slice(2);
+  if (d.length === 10 && d.startsWith('0')) d = '593' + d.slice(1);
+  if (d.length === 9 && d.startsWith('9')) d = '593' + d; // móvil de Ecuador escrito sin el 0 inicial
+  return d.length >= 8 && d.length <= 15 ? d : '';
 }
 function json(res, code, obj) {
   res.statusCode = code;
@@ -88,21 +97,17 @@ module.exports = async (req, res) => {
   }
 
   // Honeypot + tiempo mínimo (si _t falta o no es número, se rechaza: antes NaN lo saltaba)
-  if (body.empresa_web) return json(res, 200, { message: 'Mensaje recibido. Te contactaremos en menos de 24h.' });
+  if (body.empresa_web) return json(res, 200, { message: 'Listo, recibimos tu solicitud. Te escribiremos por WhatsApp.' });
   const elapsed = Number(body._t);
   if (!Number.isFinite(elapsed) || elapsed < 2500) return json(res, 400, { message: 'Envío demasiado rápido. Completa el formulario con calma.' });
 
   const nombre = clean(body.nombre, 120);
-  const email = clean(body.email, 160).toLowerCase();
-  const tipo = clean(body.tipo, 30);
-  const presupuesto = clean(body.presupuesto, 20);
-  const mensaje = String(body.mensaje ?? '').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').replace(/<[^>]*>/g, '').trim().slice(0, 4000);
+  const whatsapp = normalizarWhatsapp(body.whatsapp);
+  const locales = clean(body.locales, 12);
 
   if (nombre.length < 3) return json(res, 400, { message: 'Nombre inválido.' });
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return json(res, 400, { message: 'Correo inválido.' });
-  if (!ALLOWED_TIPOS.has(tipo)) return json(res, 400, { message: 'Tipo de proyecto inválido.' });
-  if (presupuesto && !Object.hasOwn(PRESUPUESTO, presupuesto)) return json(res, 400, { message: 'Presupuesto inválido.' });
-  if (mensaje.length < 20) return json(res, 400, { message: 'Mensaje demasiado corto (mín. 20 caracteres).' });
+  if (!whatsapp) return json(res, 400, { message: 'WhatsApp inválido. Escribe tu número con código de país o el 09… de Ecuador.' });
+  if (!Object.hasOwn(LOCALES, locales)) return json(res, 400, { message: 'Indica cuántos locales tienes.' });
   // Consentimiento explícito (casilla no premarcada): sin él no se trata ningún dato.
   if (body.consentimiento !== true) return json(res, 400, { message: 'Debes aceptar la Política de privacidad para enviar el mensaje.' });
   const politica = /^\d{4}-\d{2}-\d{2}$/.test(String(body.politica ?? '')) ? String(body.politica) : 'desconocida';
@@ -114,9 +119,9 @@ module.exports = async (req, res) => {
     console.error('[contact] missing RESEND_API_KEY');
     return json(res, 503, { message: 'El servicio de correo no está disponible. Escríbenos a fqsolution@fqsolution.site.' });
   }
-  const subject = `[FQ Solution] ${tipo} — ${nombre}`.slice(0, 120);
+  const subject = `[FQ Solution] Demo Supervisor 360 — ${nombre}`.slice(0, 120);
   // Minimización: la IP solo se usa en memoria para limitar abusos; no se incluye en el correo ni se guarda.
-  const text = `Nombre: ${nombre}\nEmail: ${email}\nTipo: ${tipo}\nPresupuesto: ${PRESUPUESTO[presupuesto] || '-'}\nConsentimiento: aceptado (política ${politica}, ${new Date().toISOString()})\n\n${mensaje}`.slice(0, 5000);
+  const text = `Solicitud de demo de Supervisor 360\n\nNombre: ${nombre}\nWhatsApp: +${whatsapp}\nAbrir chat: https://wa.me/${whatsapp}\nLocales: ${LOCALES[locales]}\nConsentimiento: aceptado (política ${politica}, ${new Date().toISOString()})`.slice(0, 2000);
 
   try {
     const ctrl = new AbortController();
@@ -124,7 +129,7 @@ module.exports = async (req, res) => {
     const r = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: FROM, to: [TO], subject, text, reply_to: email }),
+      body: JSON.stringify({ from: FROM, to: [TO], subject, text }),
       signal: ctrl.signal
     });
     clearTimeout(timer);
@@ -137,6 +142,6 @@ module.exports = async (req, res) => {
     return json(res, 502, { message: 'No se pudo enviar el correo. Intenta de nuevo.' });
   }
 
-  console.log(`[contact] sent tipo=${tipo} len=${mensaje.length}`);
-  return json(res, 200, { message: 'Mensaje recibido. Te contactaremos en menos de 24h.' });
+  console.log(`[contact] sent locales=${locales}`);
+  return json(res, 200, { message: 'Listo, recibimos tu solicitud. Te escribiremos por WhatsApp.' });
 };

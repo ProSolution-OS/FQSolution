@@ -423,3 +423,5 @@ body.guia .cierre .btn-g.wa{background:#25D366;border-color:#25D366;color:#0f1a1
 body.guia .in-contacto h2{font:800 clamp(28px,4vw,46px)/1.05 var(--sans);font-stretch:108%;letter-spacing:-.02em;margin:0 0 16px;max-width:18ch;color:#fff}
 
 @media(max-width:480px){body.guia .solo-ancho{display:none}}
+
+body.guia .modulo h2{font:800 clamp(24px,3vw,32px)/1.12 var(--sans);font-stretch:104%;letter-spacing:-.015em;margin:0 0 10px;color:var(--tinta)}
